@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Edit file Active</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: url('https://i.postimg.cc/ncbFH9bp/62cad26ab5bc9ed1f9615c08378e393c.jpg') no-repeat center center fixed;
+      background-size: cover;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      align-items: center;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.4); /* mờ nền */
+      z-index: -1;
+    }
+
+    .container {
+      background: #fff;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 480px;
+    }
+
+    .logo {
+      display: block;
+      margin: 0 auto 20px auto;
+      width: 120px;
+      height: auto;
+      border-radius: 12px;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    select, button, input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 15px;
+      margin-top: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src=""Logo" class="logo">
+    <h2>Active Editor</h2>
+
+    <label>📁 Tải file Active.sav:</label>
+    <input type="file" id="fileInput">
+
+    <label>⚙️ FPS:</label>
+    <select id="fpsSelect">
+      <option value="">-- Chọn --</option>
+      <option value="4">30 FPS</option>
+      <option value="5">40 FPS</option>
+      <option value="6">60 FPS</option>
+      <option value="7">90 FPS</option>
+      <option value="8">120 FPS</option>
+    </select>
+
+    <label>🖼️ Đồ hoạ:</label>
+    <select id="qualitySelect">
+      <option value="">-- Chọn --</option>
+      <option value="6">Siêu Mượt</option>
+      <option value="1">Mượt</option>
+      <option value="2">Cân Bằng</option>
+      <option value="3">HD</option>
+      <option value="4">HDR</option>
+      <option value="5">ULTRA HDR</option>
+    </select>
+
+    <label>🌈 Màu sắc:</label>
+    <select id="styleSelect">
+      <option value="">-- Chọn --</option>
+      <option value="1">Kinh điển</option>
+      <option value="2">Nhiều màu</option>
+      <option value="3">Như Thực</option>
+      <option value="4">Mềm</option>
+      <option value="5">Phim Ảnh</option>
+    </select>
+
+    <button onclick="editFile()">✅ Chỉnh sửa & Tải về</button>
+  </div>
+
+  <script>
+    let buffer, view;
+
+    const KEYS = {
+      fps: [
+        'BattleFPS\u0000\u000C\u0000\u0000\u0000IntProperty',
+        'LobbyFPS\u0000\u000C\u0000\u0000\u0000IntProperty',
+        'FPSLevel\u0000\u000C\u0000\u0000\u0000IntProperty'
+      ],
+      quality: [
+        'LobbyRenderQuality\u0000\u000C\u0000\u0000\u0000IntProperty',
+        'BattleRenderQuality\u0000\u000C\u0000\u0000\u0000IntProperty'
+      ],
+      style: [
+        'LobbyRenderStyle\u0000\u000C\u0000\u0000\u0000IntProperty',
+        'BattleRenderStyle\u0000\u000C\u0000\u0000\u0000IntProperty'
+      ]
+    };
+
+    document.getElementById("fileInput").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        buffer = event.target.result;
+        view = new DataView(buffer);
+        alert("✅ File đã tải thành công.");
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    function findBytes(haystack, needle) {
+      outer: for (let i = 0; i <= haystack.length - needle.length; i++) {
+        for (let j = 0; j < needle.length; j++) {
+          if (haystack[i + j] !== needle[j]) continue outer;
+        }
+        return i;
+      }
+      return -1;
+    }
+
+    function patch(keys, value) {
+      const uint8 = new Uint8Array(buffer);
+      let changed = 0;
+
+      for (let key of keys) {
+        const keyBytes = new TextEncoder().encode(key);
+        const index = findBytes(uint8, keyBytes);
+        if (index !== -1) {
+          const yIndex = key.indexOf("IntProperty") + "IntProperty".length - 1;
+          const patchIndex = index + yIndex + 11;
+          if (patchIndex < buffer.byteLength) {
+            view.setUint8(patchIndex, value);
+            changed++;
+          }
+        }
+      }
+
+      return changed;
+    }
+
+    function editFile() {
+      if (!buffer) {
+        alert("❗ Bạn chưa chọn file.");
+        return;
+      }
+
+      const fpsVal = parseInt(document.getElementById("fpsSelect").value);
+      const qualVal = parseInt(document.getElementById("qualitySelect").value);
+      const styleVal = parseInt(document.getElementById("styleSelect").value);
+
+      let total = 0;
+      if (!isNaN(fpsVal)) total += patch(KEYS.fps, fpsVal);
+      if (!isNaN(qualVal)) total += patch(KEYS.quality, qualVal);
+      if (!isNaN(styleVal)) total += patch(KEYS.style, styleVal);
+
+      if (total > 0) {
+        const blob = new Blob([buffer], { type: "application/octet-stream" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "Active.sav";
+        a.click();
+        alert(`✅ Đã chỉnh ${total} mục.`);
+      } else {
+        alert("⚠️ Không có mục nào được chỉnh.");
+      }
+    }
+  </script>
+</body>
+</html>
